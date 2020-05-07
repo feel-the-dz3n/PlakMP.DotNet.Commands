@@ -10,11 +10,28 @@ namespace PlakMP.DotNet.Commands
     public class CommandProcessor
     {
         private List<object> commandTypes = new List<object>();
+        private List<ITypeConverter> converters = new List<ITypeConverter>();
 
+        /// <summary>
+        /// Register converter or commands type
+        /// </summary>
         public void Register<T>() => Register(typeof(T));
 
+        /// <summary>
+        /// Register converter or commands type
+        /// </summary>
         public void Register(Type type)
-            => commandTypes.Add(Activator.CreateInstance(type));
+        {
+            if (type.GetInterfaces().Contains(typeof(ITypeConverter)))
+            {
+                var instance = Activator.CreateInstance(type);
+                converters.Add((ITypeConverter)instance);
+            }
+            else
+            {
+                commandTypes.Add(Activator.CreateInstance(type));
+            }
+        }
 
         public void ProcessCommand(IPlayer player, string command)
         {
@@ -33,8 +50,20 @@ namespace PlakMP.DotNet.Commands
             var parameters = new List<object>();
 
             // TODO: do here some convertation stuff
+            var args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var arg in method.GetParameters())
+            {
+
+            }
 
             method.Invoke(typeInstance, parameters.ToArray());
+        }
+
+        private object Convert<T>(T instance, string command)
+        {
+            var converter = converters.FirstOrDefault(x => x.InitialType == typeof(T));
+            if (converter == null) return null;
+            return converter.Convert(instance, command);
         }
     }
 }
